@@ -132,7 +132,7 @@ def parse_input(input_file):
 mypath = "inputs/"
 onlyfiles = [f for f in listdir(mypath) if isfile(join(mypath, f))]
 
-for input_file in onlyfiles[-100:-40]:
+for input_file in onlyfiles[5:]:
   output_file = input_file.replace("in", "out")
 
   # Don't want to overwrite a solution
