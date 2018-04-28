@@ -9,8 +9,6 @@ from os import listdir
 from os.path import isfile, join
 
 warnings.filterwarnings("ignore")
-INPUT_FILE = "inputs/1.in"
-OUTPUT_FILE = "outputs/1.out"
 NUM_MONTE_CARLO = 1
 
 np.random.seed(42)
@@ -60,6 +58,9 @@ def create_solution(input_file, output_file):
   weights_reduced = nx.adjacency_matrix(G_reduced).astype('float32')
   weights_reduced.setdiag(np.ones(k))
 
+  min_cost = np.inf
+  solution = None
+
   for _ in range(NUM_MONTE_CARLO):
     solver = pytspsa.Tsp_sa()
     solver.set_num_nodes(k)
@@ -67,22 +68,22 @@ def create_solution(input_file, output_file):
     solver.set_t_v_factor(10.0)
     solver.sa(2018)
 
-    solution = solver.getBestSolution()
+    cur_soln = solver.getBestSolution()
+    if cur_soln.getlength() < min_cost:
+      min_cost = cur_soln.getlength()
+      solution = cur_soln
+
 
   route = solution.getRoute().split("-")
   route = [dominating_list[int(i)] for i in route]
-  print('Path= {}'.format(route))
 
 
   final_route = [route[0]]
   for i in range(len(route) - 1):
     source, target = route[i: i+2]
     path = nx.shortest_path(G, source=source, target=target)
-    print(path)
     final_route.extend(path[1:])
 
-  print('Length={}'.format(solution.getlength()))
-  print(final_route)
 
   route = final_route[:-1]
   index = route.index((start_k))
@@ -90,7 +91,6 @@ def create_solution(input_file, output_file):
   d.rotate(len(route) - index)
   route = list(d)
   route.append(start_k)
-  print('Path= {}'.format(route))
 
   write_output(output_file, route, dominating_list, kingdoms)
 
@@ -120,14 +120,18 @@ def parse_input(input_file):
     costs = line.split(' ')
     for j, cost in enumerate(costs):
       if cost and not cost == 'x':
-        matrix[i, j] = float(cost)
+        try:
+          matrix[i, j] = float(cost)
+        except:
+          pass
 
   return n, kingdoms, start, matrix
 
 mypath = "inputs/"
 onlyfiles = [f for f in listdir(mypath) if isfile(join(mypath, f))]
 
-for input_file in onlyfiles[:10]:
+for input_file in onlyfiles[-10:]:
+  print("Working on file: " + input_file)
   output_file = input_file.replace("in", "out")
   create_solution("inputs/" + input_file, "outputs/" + output_file)
 
