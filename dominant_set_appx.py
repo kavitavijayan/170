@@ -11,6 +11,7 @@ import unicodedata
 
 warnings.filterwarnings("ignore")
 NUM_MONTE_CARLO = 1
+OVERWRITE = False
 
 np.random.seed(42)
 
@@ -131,10 +132,18 @@ def parse_input(input_file):
 mypath = "inputs/"
 onlyfiles = [f for f in listdir(mypath) if isfile(join(mypath, f))]
 
-for input_file in onlyfiles[-33:-20]:
-  print("Working on file: " + input_file)
+for input_file in onlyfiles[-100:-40]:
   output_file = input_file.replace("in", "out")
-  create_solution("inputs/" + input_file, "outputs/" + output_file)
+
+  # Don't want to overwrite a solution
+  if not OVERWRITE and isfile("outputs/" + output_file):
+    continue
+
+  print("Working on file: " + input_file)
+  try:
+    create_solution("inputs/" + input_file, "outputs/" + output_file)
+  except:
+    print("Could not solve file: " + input_file)
 
 
 
