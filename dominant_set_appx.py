@@ -7,6 +7,7 @@ from student_utils_sp18 import *
 import warnings
 from os import listdir
 from os.path import isfile, join
+import unicodedata
 
 warnings.filterwarnings("ignore")
 NUM_MONTE_CARLO = 1
@@ -107,7 +108,7 @@ def write_output(output_file, path, conquering_kingdoms, kingdoms):
 
 def parse_input(input_file):
   with open(input_file, 'r') as inFile:
-    lines = inFile.readlines()
+    lines = [unicodedata.normalize("NFKD", line) for line in inFile.readlines()]
 
   n = int(lines[0])
   kingdoms = lines[1][:-1].split(" ")
@@ -130,7 +131,7 @@ def parse_input(input_file):
 mypath = "inputs/"
 onlyfiles = [f for f in listdir(mypath) if isfile(join(mypath, f))]
 
-for input_file in onlyfiles[-10:]:
+for input_file in onlyfiles[-33:-20]:
   print("Working on file: " + input_file)
   output_file = input_file.replace("in", "out")
   create_solution("inputs/" + input_file, "outputs/" + output_file)
