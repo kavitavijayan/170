@@ -8,10 +8,12 @@ import warnings
 from os import listdir
 from os.path import isfile, join
 import unicodedata
+from multiprocessing import Process
 
 warnings.filterwarnings("ignore")
 NUM_MONTE_CARLO = 1
 OVERWRITE = False
+TIMEOUT = 15
 
 np.random.seed(42)
 
@@ -19,6 +21,7 @@ np.random.seed(42)
 def create_solution(input_file, output_file):
   n, kingdoms, starting_kingdom, matrix = parse_input(input_file)
   start_k = kingdoms.index(starting_kingdom)
+  conquer_start = True
 
   G = adjacency_matrix_to_graph(matrix.tolist())
 
@@ -38,6 +41,7 @@ def create_solution(input_file, output_file):
   dominating_set = min_weighted_dominating_set(G, weight='surplus')
   if start_k not in dominating_set:
     dominating_set.add(start_k)
+    conquer_start = False
 
   dominating_list = sorted(list(dominating_set))
   k = len(dominating_list)
@@ -68,7 +72,7 @@ def create_solution(input_file, output_file):
     solver.set_num_nodes(k)
     solver.add_by_distances(weights_reduced.todense())
     solver.set_t_v_factor(10.0)
-    solver.sa(2018)
+    solver.sa(12)
 
     cur_soln = solver.getBestSolution()
     if cur_soln.getlength() < min_cost:
@@ -78,7 +82,6 @@ def create_solution(input_file, output_file):
 
   route = solution.getRoute().split("-")
   route = [dominating_list[int(i)] for i in route]
-
 
   final_route = [route[0]]
   for i in range(len(route) - 1):
@@ -93,6 +96,10 @@ def create_solution(input_file, output_file):
   d.rotate(len(route) - index)
   route = list(d)
   route.append(start_k)
+
+  if not conquer_start:
+    dominating_list.remove(start_k)
+    print("Removing starting kingdom to conquer.")
 
   write_output(output_file, route, dominating_list, kingdoms)
 
@@ -141,8 +148,16 @@ for input_file in onlyfiles[5:]:
 
   print("Working on file: " + input_file)
   try:
-    create_solution("inputs/" + input_file, "outputs/" + output_file)
-  except:
+    action_process = Process(target=create_solution, args=(
+      "inputs/" + input_file, "outputs/" + output_file, ))
+    action_process.start()
+    action_process.join(timeout=TIMEOUT)
+
+    if action_process.is_alive():
+      print("Killing process due to timeout.")
+      action_process.terminate()
+  except Exception as e:
+    print("Error: ", e)
     print("Could not solve file: " + input_file)
 
 
