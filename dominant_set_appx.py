@@ -2,10 +2,12 @@ import networkx as nx
 from networkx.algorithms.approximation import min_weighted_dominating_set
 import numpy as np
 import pytspsa
+from pytsp import atsp_tsp, run, dumps_matrix
 import collections
 from student_utils_sp18 import *
 import warnings
-from os import listdir
+import os
+from os import listdir, chdir
 from os.path import isfile, join
 import unicodedata
 from multiprocessing import Process
@@ -17,6 +19,47 @@ TIMEOUT = 15
 
 np.random.seed(42)
 
+def get_tour_by_annealing(k, weights_reduced):
+  """
+  Gets the best tour by simulated annealing.
+  """
+  weights_reduced.setdiag(np.ones(k))
+  min_cost = np.inf
+  solution = None
+
+  for _ in range(NUM_MONTE_CARLO):
+    solver = pytspsa.Tsp_sa()
+    solver.set_num_nodes(k)
+    solver.add_by_distances(weights_reduced.todense())
+    solver.set_t_v_factor(10.0)
+    solver.sa(12)
+
+    cur_soln = solver.getBestSolution()
+    if cur_soln.getlength() < min_cost:
+      min_cost = cur_soln.getlength()
+      solution = cur_soln
+
+  route = solution.getRoute().split("-")
+  return route
+
+def get_tour_concorde(weights_reduced):
+  """
+  Runs the Concord algorithm to solve a heuristic approach to the TSP
+  problem.
+  """
+  dir_path = os.path.dirname(os.path.realpath(__file__))
+
+  matrix_sym = atsp_tsp(weights_reduced.todense(), strategy="avg")
+  outf = "/tmp/myroute.tsp"
+  with open(outf, 'w') as dest:
+      dest.write(dumps_matrix(matrix_sym, name="My Route"))
+
+  tour = run(outf, start=0, solver="concorde")
+  os.chdir(dir_path)
+  route = tour['tour']
+  route.append(route[0])
+
+  return route
 
 def create_solution(input_file, output_file):
   n, kingdoms, starting_kingdom, matrix = parse_input(input_file)
@@ -62,25 +105,9 @@ def create_solution(input_file, output_file):
         G_reduced.add_edge(m, n, weight=weight)
 
   weights_reduced = nx.adjacency_matrix(G_reduced).astype('float32')
-  weights_reduced.setdiag(np.ones(k))
 
-  min_cost = np.inf
-  solution = None
-
-  for _ in range(NUM_MONTE_CARLO):
-    solver = pytspsa.Tsp_sa()
-    solver.set_num_nodes(k)
-    solver.add_by_distances(weights_reduced.todense())
-    solver.set_t_v_factor(10.0)
-    solver.sa(12)
-
-    cur_soln = solver.getBestSolution()
-    if cur_soln.getlength() < min_cost:
-      min_cost = cur_soln.getlength()
-      solution = cur_soln
-
-
-  route = solution.getRoute().split("-")
+  # route = get_tour_concorde(weights_reduced)
+  route = get_tour_by_annealing(k, weights_reduced)
   route = [dominating_list[int(i)] for i in route]
 
   final_route = [route[0]]
@@ -88,7 +115,6 @@ def create_solution(input_file, output_file):
     source, target = route[i: i+2]
     path = nx.shortest_path(G, source=source, target=target)
     final_route.extend(path[1:])
-
 
   route = final_route[:-1]
   index = route.index((start_k))
@@ -139,7 +165,7 @@ def parse_input(input_file):
 mypath = "inputs/"
 onlyfiles = [f for f in listdir(mypath) if isfile(join(mypath, f))]
 
-for input_file in onlyfiles[5:]:
+for input_file in onlyfiles:
   output_file = input_file.replace("in", "out")
 
   # Don't want to overwrite a solution
